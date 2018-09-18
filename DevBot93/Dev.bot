@@ -1,0 +1,16 @@
+{
+    "name": "Dev",
+    "description": "",
+    "version": "2.0",
+    "secretKey": "",
+    "services": [
+        {
+            "type": "endpoint",
+            "name": "http://localhost:3984/api/messages",
+            "id": "a1c78920-b4bc-11e8-babd-6b8afdc79d53",
+            "appId": "",
+            "appPassword": "",
+            "endpoint": "http://localhost:3984/api/messages"
+        }
+    ]
+}
