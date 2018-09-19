@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Luis;
 using Microsoft.Bot.Builder.Luis.Models;
+using LuisBot.Services;
 
 namespace Microsoft.Bot.Sample.LuisBot
 {
@@ -33,16 +36,63 @@ namespace Microsoft.Bot.Sample.LuisBot
 
         // Go to https://luis.ai and create a new intent, then train/publish your luis app.
         // Finally replace "Greeting" with the name of your newly created intent in the following handler
-        [LuisIntent("Greeting")]
+        [LuisIntent("Greetings")]
         public async Task GreetingIntent(IDialogContext context, LuisResult result)
         {
-            await this.ShowLuisGreetResult(context, result);
+            var name = context.Activity.From.Name;
+            await context.PostAsync($"Hey {name}");
+            context.Wait(MessageReceived);
         }
 
-        [LuisIntent("Cancel")]
+        [LuisIntent("Order-cancel")]
         public async Task CancelIntent(IDialogContext context, LuisResult result)
         {
             await this.ShowLuisResult(context, result);
+        }
+
+        [LuisIntent("Order-Shipping")]
+        public async Task ShippingIntent(IDialogContext context, LuisResult result)
+        {
+            var message = "";
+            if (result.Entities[0].Type == "builtin.number")
+            {
+                Dictionary<string, string> Status = new Dictionary<string, string>();
+                var OrderId = result.Entities[0].Entity;
+                Status = OrderDetails.Order(OrderId,"shipStatus");
+                message = $"Your Shipment Status is {Status["Status"]}";
+            }
+            else if (result.Entities[0].Type == "Address")
+            {
+                Dictionary<string, string> Address = new Dictionary<string, string>();
+                var OrderId = "";
+                if(result.Entities.Count > 1)
+                OrderId = result.Entities[1].Entity;
+                Address = OrderDetails.Order(OrderId, "shipStatus");
+                if (OrderId != "" && Address["Status"] == "NotYetShipped")
+                {
+                    message = $"Can I Change the address of {OrderId}?";
+                }
+                else
+                {
+                    message = $"Please tell me Order no?";
+                }
+            }
+            await context.PostAsync(message); 
+            context.Wait(MessageReceived);
+        }
+
+        [LuisIntent("Order-Status")]
+        public async Task StatusIntent(IDialogContext context, LuisResult result)
+        {
+            var OrderId = " ";
+            Dictionary<string, string> Status = new Dictionary<string, string>();
+            if (result.Entities[0].Type == "builtin.number")
+            {
+                OrderId = result.Entities[0].Entity;
+                Status = OrderDetails.Order(OrderId, "OrderStatus");
+            }
+            await context.PostAsync($"{Status["Status"]}");
+            context.Wait(MessageReceived);
         }
 
         [LuisIntent("Help")]
@@ -51,16 +101,18 @@ namespace Microsoft.Bot.Sample.LuisBot
             await this.ShowLuisResult(context, result);
         }
 
-        private async Task ShowLuisResult(IDialogContext context, LuisResult result) 
+        [LuisIntent("End")]
+        public async Task EndIntent(IDialogContext context, LuisResult result)
         {
-            await context.PostAsync($"You have reached {result.Intents[0].Intent}. You said: {result.Query}");
+            var name = context.Activity.From.Name;
+            await context.PostAsync($"Thanks for using the bot :{name}");
             context.Wait(MessageReceived);
         }
 
-        private async Task ShowLuisGreetResult(IDialogContext context, LuisResult result)
+
+        private async Task ShowLuisResult(IDialogContext context, LuisResult result) 
         {
-            var name = context.Activity.From.Name;
-            await context.PostAsync($"Hey {name}");
+            await context.PostAsync($"You have reached {result.Intents[0].Intent}. You said: {result.Query}");
             context.Wait(MessageReceived);
         }
     }
